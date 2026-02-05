@@ -176,14 +176,19 @@ def main():
     parser.add_argument(
         "--limit",
         type=int,
-        default=20,
-        help="Maximum videos to fetch per channel (default: 20)",
+        default=30,
+        help="Maximum videos to fetch per channel (default: 30)",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=None,
         help="Output directory for transcripts (default: app/scripts/data/transcripts)",
+    )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip videos that already have transcripts saved (for resuming interrupted runs)",
     )
 
     args = parser.parse_args()
@@ -229,12 +234,21 @@ def main():
 
         # Fetch transcript for each video
         channel_transcripts = 0
+        skipped_existing = 0
 
         for j, video in enumerate(videos, 1):
             video_id = video["videoId"]
             title = video["title"][:50] + "..." if len(video["title"]) > 50 else video["title"]
 
             print(f"   [{j}/{len(videos)}] {title}")
+
+            # Check if transcript already exists
+            existing_path = output_dir / channel_handle / f"{video_id}.json"
+            if args.skip_existing and existing_path.exists():
+                print(f"    ⏭️  Already exists, skipping")
+                skipped_existing += 1
+                channel_transcripts += 1
+                continue
 
             # Fetch transcript
             transcript_text = fetch_transcript(video_id)
@@ -252,7 +266,11 @@ def main():
         total_videos += len(videos)
         total_transcripts += channel_transcripts
 
-        print(f"   📊 Channel complete: {channel_transcripts}/{len(videos)} transcripts saved\n")
+        print(f"   📊 Channel complete: {channel_transcripts}/{len(videos)} transcripts", end="")
+        if skipped_existing > 0:
+            print(f" ({skipped_existing} already existed)")
+        else:
+            print(" saved\n")
 
     # Summary
     print("=" * 50)
