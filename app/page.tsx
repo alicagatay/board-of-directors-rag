@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { mentorConfigs, type MentorId } from "./mentors/config";
 
 export default function Home() {
   const [input, setInput] = useState("");
@@ -10,6 +11,7 @@ export default function Home() {
       id: string;
       role: "user" | "assistant";
       content: string;
+      mentorName?: string;
     }>
   >([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -52,7 +54,7 @@ export default function Home() {
         body: JSON.stringify({ messages: currentMessages }),
       });
 
-      const { agent, query } = await agentResponse.json();
+      const { mentor, query } = await agentResponse.json();
 
       // Step 2: Make direct API call
       const response = await fetch("/api/chat", {
@@ -62,7 +64,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           messages: currentMessages,
-          agent,
+          mentor,
           query,
         }),
       });
@@ -72,6 +74,9 @@ export default function Home() {
         return;
       }
 
+      // Get the mentor's display name
+      const mentorName = mentorConfigs[mentor as MentorId]?.name || mentor;
+
       // Create a new assistant message
       const assistantMessageId = uuidv4();
       setMessages((prev) => [
@@ -80,6 +85,7 @@ export default function Home() {
           id: assistantMessageId,
           role: "assistant",
           content: "",
+          mentorName,
         },
       ]);
 
@@ -121,20 +127,25 @@ export default function Home() {
           <h1 className="text-4xl font-extrabold leading-none mt-0 mb-0">
             Board Of Directors Chat
           </h1>
-          <p className="text-xl font-normal text-gray-500 leading-none -mt-1">This is your discussion chat with your board of directors.</p>
+          <p className="text-xl font-normal text-gray-500 leading-none -mt-1">
+            This is your discussion chat with your board of directors.
+          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto mb-4 space-y-4">
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`p-3 rounded ${message.role === "user"
-                ? "bg-blue-100 ml-8"
-                : "bg-gray-100 mr-8"
-                }`}
+              className={`p-3 rounded ${
+                message.role === "user"
+                  ? "bg-blue-100 ml-8"
+                  : "bg-gray-100 mr-8"
+              }`}
             >
               <p className="font-semibold mb-1">
-                {message.role === "user" ? "You" : "AI Assistant"}
+                {message.role === "user"
+                  ? "You"
+                  : message.mentorName || "AI Assistant"}
               </p>
               <div className="whitespace-pre-wrap">{message.content}</div>
             </div>
