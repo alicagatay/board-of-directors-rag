@@ -49,7 +49,7 @@ export const qdrantClient = new QdrantClient({
 });
 
 // Import types for helper functions
-import type { Chunk, LinkedInPost } from "./chunking";
+import type { Chunk, YouTubeTranscript } from "./chunking";
 
 /**
  * COLLECTION NAMES
@@ -60,101 +60,52 @@ import type { Chunk, LinkedInPost } from "./chunking";
  * - Easier to manage and scale independently
  * - Can apply different indexing strategies per collection
  */
-const ARTICLES_COLLECTION = "articles";
-const POSTS_COLLECTION = "posts";
+const TRANSCRIPTS_COLLECTION = "transcripts";
 
 /**
- * Upserts article chunks to the Qdrant "articles" collection.
+ * Upserts transcript chunks to the Qdrant "transcripts" collection.
  *
- * WHY THIS HELPER EXISTS:
- * Encapsulates the Qdrant upsert logic so API routes stay thin and focused on
- * request handling. Also makes the upsert pattern reusable across different
- * parts of the codebase (API routes, scripts, etc.).
+ * WHY CHUNK TRANSCRIPTS?
+ * YouTube transcripts are long (5,000-50,000+ characters) and need chunking for:
+ * - Precise retrieval: Return only the relevant section, not the whole transcript
+ * - Semantic coherence: Spoken content is less dense than written, needs larger chunks
+ * - Context preservation: 200-char overlap captures pronoun resolution in speech
  *
- * WHAT IS UPSERT?
- * Upsert = Update + Insert. If a point with the same ID exists, it's updated;
- * otherwise, a new point is created. This makes operations idempotent—running
- * the same upload twice won't create duplicates.
- *
- * WHY wait: true?
- * Qdrant can acknowledge writes immediately (async) or wait until data is fully
- * indexed and searchable (sync). We wait to ensure consistency—the data is
- * searchable immediately after this function returns.
+ * CHUNK PARAMETERS:
+ * - Size: 1000 characters (2x article chunks because spoken content is ~2x less dense)
+ * - Overlap: 200 characters (captures pronoun antecedents in conversational speech)
  *
  * @param chunks - Array of text chunks with metadata (from chunkText())
  * @param embeddings - Array of 512-dimensional vectors (from OpenAI)
- *
- * IMPORTANT: chunks and embeddings must be the same length and in the same order.
- * chunks[i] corresponds to embeddings[i].
+ * @param transcript - Original transcript metadata for enriching each chunk
  */
-export async function upsertArticleChunks(
+export async function upsertTranscriptChunks(
   chunks: Chunk[],
   embeddings: number[][],
+  transcript: Omit<YouTubeTranscript, "text">,
 ): Promise<void> {
-  // Build points array - each point is a vector with its metadata
   const points = chunks.map((chunk, index) => ({
-    // Random UUID ensures uniqueness even if the same content is uploaded multiple times
     id: crypto.randomUUID(),
-    // The 512-dimensional embedding vector used for similarity search
     vector: embeddings[index],
-    // Payload contains all searchable/filterable metadata plus the original text
     payload: {
-      ...chunk.metadata, // source, chunkIndex, totalChunks, title, author, date, etc.
-      content: chunk.content, // The actual text chunk - returned with search results
+      // Chunk-level metadata
+      ...chunk.metadata,
+      content: chunk.content,
+      // Transcript-level metadata for filtering and attribution
+      videoId: transcript.videoId,
+      videoUrl: transcript.videoUrl,
+      channelName: transcript.channelName,
+      channelUrl: transcript.channelUrl,
+      title: transcript.title,
+      viewCount: transcript.viewCount,
+      duration: transcript.duration,
+      publishedTime: transcript.publishedTime,
+      contentType: "transcript",
     },
   }));
 
-  /**
-   * BATCH UPSERT
-   *
-   * We upload all points in a single API call for efficiency.
-   * For very large uploads (10K+ points), you might want to batch these
-   * into groups of 100-1000 to avoid timeout issues.
-   */
-  await qdrantClient.upsert(ARTICLES_COLLECTION, {
-    wait: true, // Wait for indexing to complete before returning
+  await qdrantClient.upsert(TRANSCRIPTS_COLLECTION, {
+    wait: true,
     points,
-  });
-}
-
-/**
- * Upserts a single LinkedIn post to the Qdrant "posts" collection.
- *
- * WHY NO CHUNKING FOR POSTS?
- * LinkedIn posts are naturally short (100-3000 characters), so:
- * - The entire post fits in one embedding
- * - No need to split into chunks
- * - Search returns complete posts, not fragments
- *
- * CONTRAST WITH ARTICLES:
- * Articles are long (5,000+ words) and need chunking for precise retrieval.
- * Posts are short and represent single, cohesive thoughts.
- *
- * @param post - LinkedIn post object with text, date, url, likes
- * @param embedding - 512-dimensional vector from OpenAI
- */
-export async function upsertLinkedInPost(
-  post: LinkedInPost,
-  embedding: number[],
-): Promise<void> {
-  await qdrantClient.upsert(POSTS_COLLECTION, {
-    wait: true, // Wait for indexing to complete
-    points: [
-      {
-        id: crypto.randomUUID(),
-        vector: embedding,
-        payload: {
-          // Store the original text for retrieval - this is what gets sent to the LLM
-          content: post.text,
-          // Attribution metadata
-          url: post.url,
-          date: post.date,
-          // Engagement metric - can be used for filtering/ranking
-          likes: post.likes,
-          // Content type identifier - useful for filtering searches by type
-          contentType: "linkedin",
-        },
-      },
-    ],
   });
 }
