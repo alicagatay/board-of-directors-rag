@@ -1,0 +1,14 @@
+# YouTube Transcript Fetcher Dependencies
+# Python 3.8+ required
+#
+# Install with Conda:
+#   conda activate board-of-directors
+#   conda install pip
+#   pip install -r requirements.txt
+#
+# Or install packages directly:
+#   conda activate board-of-directors
+#   pip install youtube-transcript-api scrapetube
+
+youtube-transcript-api>=1.0.0
+scrapetube>=2.5.0
