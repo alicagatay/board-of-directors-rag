@@ -41,23 +41,59 @@ import { LanguageModelV2StreamPart } from "@ai-sdk/provider";
 import { AgentResponse } from "./types";
 
 /**
- * Topics that the RAG agent is designed to help with.
+ * Topics that the Board of Directors mentors can help with.
  *
- * These are derived from the indexed content (Medium articles + LinkedIn posts)
- * which focus on software development, career advice, and professional content.
+ * These are derived from the 18 mentors' expertise areas including:
+ * Alex Hormozi (business scaling), Steven Bartlett (podcasting/investing),
+ * Dan Martell (SaaS), Nick Bare (hybrid fitness), Iman Gadzhi (agencies),
+ * George Heaton (streetwear brands), Brian Jenney (coding), and more.
  *
  * The LLM classifier uses these topics to determine if a query is relevant.
- * Queries about cooking, weather, sports, etc. will be rejected.
+ * Queries about cooking, weather, sports scores, etc. will be rejected.
  */
 export const RELEVANT_TOPICS = [
-  "Software development",
-  "Software engineering",
-  "Coding bootcamps",
-  "Career advice",
-  "LinkedIn content strategy",
-  "Writing LinkedIn content",
-  "Tech industry insights",
-  "AI and machine learning",
+  // Business & Entrepreneurship
+  "Business scaling and growth",
+  "Offers, pricing, and sales",
+  "SaaS and software businesses",
+  "Agency building and client acquisition",
+  "E-commerce and brand building",
+
+  // Fitness & Endurance
+  "Marathon and endurance training",
+  "Hybrid athletics (Hyrox, strength + cardio)",
+  "Gym mindset and discipline",
+  "Nutrition and supplements",
+
+  // Content & Personal Brand
+  "Content creation and audience building",
+  "Personal branding and storytelling",
+  "YouTube and video content strategy",
+  "Podcasting and interview skills",
+  "Media appearances and public speaking",
+  "Creator workflows and behind-the-scenes processes",
+
+  // Software & Tech
+  "Software development and coding",
+  "JavaScript, React, and web development",
+  "Developer hardware and productivity",
+  "Indie hacking and building in public",
+
+  // Mindset & Growth
+  "Mindset and mental toughness",
+  "Discipline, focus, and work ethic",
+  "Personal transformation and habits",
+  "Leadership and team building",
+
+  // Investing & Startups
+  "Angel investing and venture capital",
+  "Silicon Valley and startup ecosystem",
+  "Bootstrapping and early-stage growth",
+
+  // Strategy & Psychology
+  "Psychology and human behavior",
+  "Power dynamics and persuasion",
+  "Business strategy and tactics",
 ] as const;
 
 /**
@@ -169,41 +205,61 @@ Be generous with relevance - if there's a reasonable connection to tech, softwar
  * - Higher (0.6-0.7): More strict, fewer but more relevant results
  * - Lower (0.3-0.4): More lenient, more results but may include noise
  */
-export const SIMILARITY_SCORE_THRESHOLD = 0.5;
+export const SIMILARITY_SCORE_THRESHOLD = 0.3;
 
 /**
- * Builds a user-friendly rejection message listing the agent's capabilities.
+ * Builds a user-friendly rejection message listing the Board's capabilities.
  *
- * @returns A message explaining what the agent can help with
+ * @returns A message explaining what the Board of Directors can help with
  */
 export function buildRejectionMessage(): string {
-  const topicsList = RELEVANT_TOPICS.map((topic) => `• ${topic}`).join("\n");
+  return `Your Board of Directors can help with:
 
-  return `I can only help with the following topics:
+**Business & Entrepreneurship**
+• Scaling businesses, offers, pricing, sales
+• SaaS, agencies, e-commerce, brand building
 
-${topicsList}
+**Fitness & Endurance**
+• Marathon training, Hyrox, hybrid athletics
+• Gym mindset, discipline, nutrition
 
-Please rephrase your query to focus on one of these areas. For example:
-- "How do I write engaging LinkedIn posts about my tech journey?"
-- "What are best practices for software engineering interviews?"
-- "Help me create content about AI trends for LinkedIn"`;
+**Content & Personal Brand**
+• Content creation, audience building, YouTube, podcasting
+• Personal branding and storytelling
+
+**Software & Tech**
+• Coding, JavaScript, React, web development
+• Developer hardware, indie hacking
+
+**Mindset & Growth**
+• Mental toughness, discipline, work ethic
+• Leadership, transformation, habits
+
+**Investing & Startups**
+• Angel investing, VC, Silicon Valley
+• Bootstrapping, early-stage growth
+
+Please rephrase your question to focus on one of these areas.`;
 }
 
 /**
- * Builds a message for when no relevant content was found in the knowledge base.
+ * Builds a message for when no relevant content was found in the mentor's transcripts.
  *
  * This is used when the LLM classifier thought the query was relevant,
  * but the vector search returned no results above the similarity threshold.
- * This can happen for niche topics not covered in the indexed content.
+ * This can happen for niche topics not covered in the mentor's content.
  *
  * @returns A message explaining that no relevant content was found
  */
 export function buildNoContentFoundMessage(): string {
-  return `I couldn't find relevant content in my knowledge base for this query.
+  return `I couldn't find relevant content in this mentor's knowledge base for your query.
 
-While your question seems related to my areas of expertise, I don't have specific content indexed that matches it well enough to provide a helpful response.
+While your question seems related to their areas of expertise, their indexed content doesn't cover this specific topic well enough to provide a grounded response.
 
-Try rephrasing your query or asking about a more general topic in software development, career advice, or LinkedIn content creation.`;
+Try:
+• Rephrasing your question with different keywords
+• Asking a more general question about their core expertise
+• Switching to a different mentor who might cover this topic`;
 }
 
 /**
