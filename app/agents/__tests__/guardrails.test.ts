@@ -92,10 +92,12 @@ describe("Query Relevance Guardrails", () => {
 
   describe("RELEVANT_TOPICS constant", () => {
     test("contains expected topics", () => {
-      expect(RELEVANT_TOPICS).toContain("Software development");
-      expect(RELEVANT_TOPICS).toContain("LinkedIn content strategy");
-      expect(RELEVANT_TOPICS).toContain("Career advice");
-      expect(RELEVANT_TOPICS).toContain("AI and machine learning");
+      expect(RELEVANT_TOPICS).toContain("Business scaling and growth");
+      expect(RELEVANT_TOPICS).toContain("Software development and coding");
+      expect(RELEVANT_TOPICS).toContain("Marathon and endurance training");
+      expect(RELEVANT_TOPICS).toContain(
+        "Content creation and audience building",
+      );
     });
 
     test("is not empty", () => {
@@ -104,8 +106,8 @@ describe("Query Relevance Guardrails", () => {
   });
 
   describe("SIMILARITY_SCORE_THRESHOLD constant", () => {
-    test("is set to 0.5", () => {
-      expect(SIMILARITY_SCORE_THRESHOLD).toBe(0.5);
+    test("is set to 0.3", () => {
+      expect(SIMILARITY_SCORE_THRESHOLD).toBe(0.3);
     });
 
     test("is within valid cosine similarity range", () => {
@@ -115,19 +117,20 @@ describe("Query Relevance Guardrails", () => {
   });
 
   describe("buildRejectionMessage", () => {
-    test("includes all relevant topics", () => {
+    test("includes key topic categories", () => {
       const message = buildRejectionMessage();
 
-      RELEVANT_TOPICS.forEach((topic) => {
-        expect(message).toContain(topic);
-      });
+      expect(message).toContain("Business & Entrepreneurship");
+      expect(message).toContain("Fitness & Endurance");
+      expect(message).toContain("Software & Tech");
+      expect(message).toContain("Mindset & Growth");
     });
 
-    test("includes helpful examples", () => {
+    test("mentions Board of Directors", () => {
       const message = buildRejectionMessage();
 
-      expect(message).toContain("LinkedIn");
-      expect(message).toContain("example");
+      expect(message).toContain("Board of Directors");
+      expect(message).toContain("rephrase");
     });
   });
 
@@ -142,7 +145,8 @@ describe("Query Relevance Guardrails", () => {
     test("suggests next steps", () => {
       const message = buildNoContentFoundMessage();
 
-      expect(message).toContain("rephras");
+      expect(message).toContain("Rephrasing");
+      expect(message).toContain("different mentor");
     });
   });
 });
