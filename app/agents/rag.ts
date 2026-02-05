@@ -4,6 +4,7 @@ import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { qdrantClient } from "../libs/qdrant";
 import { cohereClient } from "../libs/cohere";
+import { mentorConfigs } from "@/app/mentors/config";
 import {
   checkQueryRelevance,
   SIMILARITY_SCORE_THRESHOLD,
@@ -13,7 +14,10 @@ import {
 } from "./guardrails";
 
 export async function ragAgent(request: AgentRequest): Promise<AgentResponse> {
-  const { query } = request;
+  const { query, mentorId } = request;
+
+  // Get mentor configuration for personalized responses
+  const mentor = mentorConfigs[mentorId];
 
   /**
    * GUARDRAIL LAYER 1: LLM Classification
@@ -51,20 +55,29 @@ export async function ragAgent(request: AgentRequest): Promise<AgentResponse> {
     input: query,
   });
 
-  const linkedInPosts = await qdrantClient.search("posts", {
-    vector: embedding.data[0].embedding,
-    limit: 10,
-    with_payload: true,
-  });
+  // Search the transcripts collection filtered by the selected mentor
+  let transcripts;
+  try {
+    transcripts = await qdrantClient.search("transcripts", {
+      vector: embedding.data[0].embedding,
+      limit: 20, // Over-fetch for reranking
+      with_payload: true,
+      filter: {
+        must: [
+          {
+            key: "channelName",
+            match: { value: mentorId },
+          },
+        ],
+      },
+    });
+  } catch (error: unknown) {
+    console.error("Qdrant search error:", JSON.stringify(error, null, 2));
+    throw error;
+  }
 
-  const articles = await qdrantClient.search("articles", {
-    vector: embedding.data[0].embedding,
-    limit: 10,
-    with_payload: true,
-  });
-
-  console.log("linkedInPosts", JSON.stringify(linkedInPosts, null, 2));
-  console.log("articles", JSON.stringify(articles, null, 2));
+  console.log(`Searching ${mentorId}'s transcripts...`);
+  console.log("transcripts", JSON.stringify(transcripts, null, 2));
 
   /**
    * GUARDRAIL LAYER 2: Similarity Score Threshold
@@ -85,15 +98,12 @@ export async function ragAgent(request: AgentRequest): Promise<AgentResponse> {
    * We use 0.5 as a balanced threshold - strict enough to filter noise,
    * lenient enough to allow related content through.
    */
-  const relevantPosts = linkedInPosts.filter(
-    (post) => post.score >= SIMILARITY_SCORE_THRESHOLD,
-  );
-  const relevantArticles = articles.filter(
-    (article) => article.score >= SIMILARITY_SCORE_THRESHOLD,
+  const relevantTranscripts = transcripts.filter(
+    (t) => t.score >= SIMILARITY_SCORE_THRESHOLD,
   );
 
   // If no results meet the similarity threshold, reject the query
-  if (relevantPosts.length === 0 && relevantArticles.length === 0) {
+  if (relevantTranscripts.length === 0) {
     console.log(
       `Query rejected by similarity threshold: "${query}" - No results above ${SIMILARITY_SCORE_THRESHOLD}`,
     );
@@ -102,88 +112,55 @@ export async function ragAgent(request: AgentRequest): Promise<AgentResponse> {
     return createStaticTextStream(buildNoContentFoundMessage());
   }
 
-  // Use only the relevant results for reranking
+  // Rerank results using Cohere for better quality
   const rerankedDocuments = await cohereClient.rerank({
     model: "rerank-english-v3.0",
     query: query,
-    documents: [
-      ...relevantPosts.map((post) => post.payload?.content as string),
-      ...relevantArticles.map((article) => article.payload?.content as string),
-    ],
+    documents: relevantTranscripts.map((t) => t.payload?.content as string),
     topN: 10,
     returnDocuments: true,
   });
 
   console.log("rerankedDocuments", JSON.stringify(rerankedDocuments, null, 2));
 
-  // we want to generate a linkedin post based on a user query
+  // Build context with video titles (all from same mentor now)
+  const context = rerankedDocuments.results
+    .map((result, i) => {
+      const originalIdx = result.index;
+      const transcript = relevantTranscripts[originalIdx];
+      const title = transcript.payload?.title || "Untitled";
+      return `[From: "${title}"]\n${result.document?.text}`;
+    })
+    .join("\n\n---\n\n");
+
   return streamText({
     model: openai("gpt-4o"),
     messages: [
       {
         role: "system",
-        content: `
-				Generate a LinkedIn post based on a user query.
-				Use the style, tone and experiences from these documents to generate the post.
-				Documents: ${JSON.stringify(
-          rerankedDocuments.results.map((result) => result.document?.text),
-          null,
-          2,
-        )}
-				`,
+        content: `You are ${mentor.name}, a member of the user's personal Board of Directors.
+
+PERSONALITY & STYLE:
+${mentor.personality}
+
+YOUR EXPERTISE:
+${mentor.expertise.join(", ")}
+
+INSTRUCTIONS:
+- Answer as ${mentor.name} would, using their communication style and perspective
+- Draw from the provided transcript excerpts to give grounded, authentic responses
+- Be practical and actionable in your advice
+- If the transcripts don't contain enough information to fully answer, acknowledge this honestly
+- Stay in character while being helpful
+
+TRANSCRIPT EXCERPTS FROM YOUR CONTENT:
+${context}`,
       },
       {
         role: "user",
         content: query,
       },
     ],
-    temperature: 0.8,
+    temperature: 0.7,
   });
-
-  // TODO: Step 1 - Generate embedding for the refined query
-  // Use openaiClient.embeddings.create()
-  // Model: 'text-embedding-3-small'
-  // Dimensions: 512
-  // Input: request.query
-  // Extract the embedding from response.data[0].embedding
-
-  // TODO: Step 2 - Query Pinecone for similar documents
-  // Get the index: pineconeClient.Index(process.env.PINECONE_INDEX!)
-  // Query parameters:
-  //   - vector: the embedding from step 1
-  //   - topK: 10 (to over-fetch for reranking)
-  //   - includeMetadata: true
-
-  // TODO: Step 3 - Extract text from results
-  // Map over queryResponse.matches
-  // Get metadata?.text (or metadata?.content as fallback)
-  // Filter out any null/undefined values
-
-  // TODO: Step 4 - Rerank with Pinecone inference API
-  // Use pineconeClient.inference.rerank()
-  // Model: 'bge-reranker-v2-m3'
-  // Pass the query and documents array
-  // This gives you better quality results
-
-  // TODO: Step 5 - Build context from reranked results
-  // Map over reranked.data
-  // Extract result.document?.text from each
-  // Join with '\n\n' separator
-
-  // TODO: Step 6 - Create system prompt
-  // Include:
-  //   - Instructions to answer based on context
-  //   - Original query (request.originalQuery)
-  //   - Refined query (request.query)
-  //   - The retrieved context
-  //   - Instruction to say if context is insufficient
-
-  // TODO: Step 7 - Stream the response
-  // Use streamText()
-  // Model: openai('gpt-4o')
-  // System: your system prompt
-  // Messages: request.messages
-  // Return the stream
-
-  throw new Error("RAG agent not implemented yet!");
 }
