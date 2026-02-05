@@ -15,6 +15,7 @@
     "scrape-content": "curl http://localhost:3000/api/scrape-content",
     "process-csv": "npx ts-node app/scripts/processCsvAndVectorize.ts",
     "upload-vectors": "npx ts-node app/scripts/upload-vectors.ts",
+    "fetch:transcripts": "python3 app/scripts/fetch_youtube_transcripts.py",
     "prepare": "husky"
   },
   "lint-staged": {
