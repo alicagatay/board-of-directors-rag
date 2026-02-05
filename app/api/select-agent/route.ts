@@ -2,26 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { openaiClient } from "@/app/libs/openai/openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
-import { agentTypeSchema, messageSchema } from "@/app/agents/types";
-import { agentConfigs } from "@/app/agents/config";
+import { messageSchema } from "@/app/agents/types";
+import { mentorIdSchema, getMentorDescriptions } from "@/app/mentors/config";
 
 const selectAgentSchema = z.object({
   messages: z.array(messageSchema).min(1),
 });
 
-const agentSelectionSchema = z.object({
-  agent: agentTypeSchema,
+const mentorSelectionSchema = z.object({
+  mentor: mentorIdSchema.describe(
+    "The mentor ID best suited to answer this query",
+  ),
   query: z
     .string()
     .describe(
-      "refine query for agent and remove any unnecessary words and correct spelling",
+      "Refine query for the mentor - remove unnecessary words and correct spelling",
     ),
   confidence: z
     .number()
     .min(1)
     .max(10)
     .describe(
-      "confidence score between 1 and 10 that the agent is the best fit for the user query",
+      "Confidence score (1-10) that this mentor is the best fit for the query",
     ),
 });
 
@@ -34,45 +36,46 @@ export async function POST(req: NextRequest) {
     // Take last 5 messages for context
     const recentMessages = messages.slice(-5);
 
-    // Build agent descriptions from config
-    const agentDescriptions = Object.entries(agentConfigs)
-      .map(([key, config]) => `- "${key}": ${config.description}`)
-      .join("\n");
+    // Build mentor descriptions from config
+    const mentorDescriptions = getMentorDescriptions();
 
-    // TODO: Step 1 - Call OpenAI with structured output
     const response = await openaiClient.responses.parse({
       model: "gpt-4o-mini",
       input: [
         {
           role: "system",
-          content: `
-					Pick the best agent based on the user query
-					The agents are: ${JSON.stringify(agentDescriptions)}
+          content: `You are the Board of Directors router. Your job is to select which mentor should answer the user's question based on their expertise.
 
-					`,
+The Board of Directors includes these mentors:
+${mentorDescriptions}
+
+Selection rules:
+1. If the user explicitly mentions a mentor by name, select that mentor
+2. Otherwise, match the query topic to mentor expertise
+3. For ambiguous queries, prefer mentors with broader business expertise
+4. Consider conversation context from previous messages`,
         },
         ...recentMessages,
       ],
-      temperature: 0.1, // 1 for high creativity, 0 for low creativity
+      temperature: 0.1,
       text: {
-        format: zodTextFormat(agentSelectionSchema, "agentSelection"),
+        format: zodTextFormat(mentorSelectionSchema, "mentorSelection"),
       },
     });
 
-    // TODO: Step 2 - Extract the parsed output
-    const { agent, query, confidence } = response.output_parsed ?? {};
+    const { mentor, query, confidence } = response.output_parsed ?? {};
 
     console.log("response", JSON.stringify(response.output_parsed, null, 2));
 
     return NextResponse.json({
-      agent,
+      mentor,
       query,
       confidence,
     });
   } catch (error) {
-    console.error("Error selecting agent:", error);
+    console.error("Error selecting mentor:", error);
     return NextResponse.json(
-      { error: "Failed to select agent" },
+      { error: "Failed to select mentor" },
       { status: 500 },
     );
   }
