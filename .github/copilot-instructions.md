@@ -1,8 +1,8 @@
-# Copilot Instructions for mini-rag
+# Copilot Instructions for Board of Directors RAG
 
 ## Project Overview
 
-This is a **learning-focused** Next.js TypeScript project teaching RAG (Retrieval Augmented Generation), fine-tuning, and multi-agent AI systems. Many functions contain `TODO` comments for learners to implement - **do not remove or complete these TODOs** unless explicitly and specifically asked.
+This is a **production** Next.js TypeScript project implementing a multi-agent RAG (Retrieval Augmented Generation) system called "Board of Directors." The system uses intelligent agent routing, vector search, and LLM generation to provide contextual responses.
 
 ## Architecture
 
@@ -24,13 +24,15 @@ User Query → select-agent (picks agent + refines query) → chat (executes age
 ### Agent Implementations
 
 - **LinkedIn Agent** (`linkedin.ts`) - Uses OpenAI fine-tuned model (`OPENAI_FINETUNED_MODEL` env var)
-- **RAG Agent** (`rag.ts`) - Pinecone vector search → reranking → context injection → streaming response
+- **RAG Agent** (`rag.ts`) - Qdrant vector search → reranking → context injection → streaming response
 
 ### Core Libraries (app/libs/)
 
 - [pinecone.ts](../app/libs/pinecone.ts) - Vector database integration with `searchDocuments()`
-- [openai/openai.ts](../app/libs/openai/openai.ts) - Shared OpenAI client instance
+- [qdrant.ts](../app/libs/qdrant.ts) - Primary vector database with article and post collections
+- [openai/openai.ts](../app/libs/openai/openai.ts) - Shared OpenAI client instance with Helicone proxy
 - [chunking.ts](../app/libs/chunking.ts) - Text chunking with overlap for vectorization
+- [cohere.ts](../app/libs/cohere.ts) - Reranking service for improving retrieval quality
 
 ## Key Patterns
 
@@ -50,23 +52,28 @@ API routes validate requests with Zod schemas. Structured outputs use `zodTextFo
 ### Embeddings
 
 - Model: `text-embedding-3-small` with 512 dimensions
-- Always include `metadata.text` when upserting to Pinecone for retrieval
+- Always include `metadata.text` when upserting to vector databases for retrieval
+
+### Two-Layer Guardrails
+
+1. **LLM Classification** - Cheap gpt-4o-mini classifier to reject off-topic queries early
+2. **Similarity Threshold** - Filter out low-relevance vector search results (0.5 cutoff)
 
 ## Commands
 
-| Command                 | Purpose                                        |
-| ----------------------- | ---------------------------------------------- |
-| `yarn dev`              | Start dev server (uses Turbopack)              |
-| `yarn test`             | Run all Jest tests                             |
-| `yarn test:selector`    | Test agent routing logic                       |
-| `yarn test:chunking`    | Test text chunking                             |
-| `yarn estimate-costs`   | Estimate fine-tuning costs from JSONL          |
-| `yarn train`            | Upload training data and start fine-tuning job |
-| `yarn exercise:vectors` | Run vector similarity exercise                 |
+| Command              | Purpose                           |
+| -------------------- | --------------------------------- |
+| `yarn dev`           | Start dev server (uses Turbopack) |
+| `yarn build`         | Build for production              |
+| `yarn start`         | Start production server           |
+| `yarn test`          | Run all Jest tests                |
+| `yarn test:selector` | Test agent routing logic          |
+| `yarn test:chunking` | Test text chunking                |
+| `yarn lint`          | Run ESLint                        |
 
 ## Environment Variables
 
-Required in `.env`: `OPENAI_API_KEY`, `PINECONE_API_KEY`, `PINECONE_INDEX`, `HELICONE_API_KEY`
+Required in `.env`: `OPENAI_API_KEY`, `PINECONE_API_KEY`, `PINECONE_INDEX`, `HELICONE_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`
 Optional: `OPENAI_FINETUNED_MODEL` (for LinkedIn agent)
 
 ## Testing
@@ -81,51 +88,15 @@ Optional: `OPENAI_FINETUNED_MODEL` (for LinkedIn agent)
 - `app/api/` - Next.js API routes (POST handlers)
 - `app/agents/` - Agent implementations and registry
 - `app/components/` - Shared components between pages
-- `app/libs/` - Third-party library integrations (OpenAI, Pinecone, chunking)
-- `app/scripts/` - One-off CLI scripts to run outside the app
-- `app/scripts/data/` - Training data (JSONL, CSV, articles)
+- `app/libs/` - Third-party library integrations (OpenAI, Pinecone, Qdrant, Cohere)
+- `app/scripts/` - CLI scripts for data processing and uploads
 - `app/services/` - Services callable from API routes
 
-## Code Style for Teaching
+## Code Style
 
-This project teaches software engineers about RAG. **Detailed, educational comments are critical** for learning. When writing or modifying code:
+When writing or modifying code:
 
-### Commenting Requirements
-
-- **Explain both "What" AND "Why"** - Every AI-specific feature needs comments that describe what the code does AND why it's necessary
-- **Be detailed, not brief** - Don't just name the operation; explain the concept, the reasoning, and how it fits into the larger RAG pipeline
-- **Target audience: beginners** - Assume the reader has never worked with embeddings, vector databases, or LLMs before
-
-### What to Comment
-
-- Embeddings: Why we convert text to vectors, what dimensions mean, why we chose specific models
-- Vector search: How similarity search works, why topK matters, what scores represent
-- Chunking: Why we split text, how overlap prevents context loss, trade-offs in chunk size
-- Reranking: Why initial results need refinement, how rerankers improve relevance
-- Streaming: Why we stream responses, how it improves UX for LLM output
-- Fine-tuning: What it does vs base models, when to use it
-
-### Example Comment Style
-
-#### BAD: Too brief
-
-```typescript
-/**
-Query Pinecone for similar vectors
-*/
-```
-
-#### GOOD: Explains what AND why
-
-```typescript
-/**
-Query Pinecone for semantically similar documents.
-
-WHY: Unlike keyword search, vector search finds documents by meaning.
-The embedding we generated represents the "meaning" of the query as a point in 512-dimensional space. Pinecone finds other points (documents) that are closest to this point using cosine similarity.
-
-topK=10 means we over-fetch candidates for reranking, since the initial vector search is fast but approximate—reranking improves precision.
-*/
-```
-
-See [pinecone.ts](../app/libs/pinecone.ts) and [rag.ts](../app/agents/rag.ts) for reference examples.
+- Maintain clean, production-quality standards
+- Add comments for complex logic, especially AI-specific patterns
+- Use TypeScript strictly with proper types and Zod validation
+- Follow existing patterns for consistency
