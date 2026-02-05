@@ -1,5 +1,5 @@
 {
-  "name": "mini_rag",
+  "name": "board-of-directors-rag",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -15,10 +15,7 @@
     "scrape-content": "curl http://localhost:3000/api/scrape-content",
     "process-csv": "npx ts-node app/scripts/processCsvAndVectorize.ts",
     "upload-vectors": "npx ts-node app/scripts/upload-vectors.ts",
-    "prepare": "husky",
-    "exercise:vectors": "npx ts-node app/scripts/exercises/vector-similarity.ts",
-    "exercise:vectors:test": "jest vector-similarity",
-    "exercise:word-math": "npx ts-node app/scripts/exercises/vector-word-arithmetic.ts"
+    "prepare": "husky"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
