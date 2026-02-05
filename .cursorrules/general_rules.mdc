@@ -1,6 +1,6 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: false
 ---
 When creating a new API route always use typedRoute
@@ -9,9 +9,8 @@ To call this route use fetchApiRoute [client.ts](mdc:app/libs/api/client.ts)
 
 Project structure:
 app/components - shared components that are shared between pages
-app/libs - 3rd party library
+app/libs - 3rd party library integrations
 app/scripts - one off scripts to run outside the app
 app/services - services we can call from API routes
 
-This project is to teach early career devs about RAG so leave comments on certain features like using Pinecone or AI specific stuff so they can learn.
-
+This is a production RAG project called "Board of Directors". When modifying code, maintain clean, production-quality standards.
