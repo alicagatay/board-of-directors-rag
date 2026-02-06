@@ -222,9 +222,9 @@ board-of-directors-rag/
 │   │   ├── fetch_youtube_transcripts.py  # Python script to fetch transcripts from YouTube
 │   │   ├── upload-transcripts.ts         # Chunk + embed + upsert transcripts to Qdrant
 │   │   └── data/
-│   │       ├── channels.json             # Channel list with IDs and names
-│   │       └── transcripts/              # Raw transcript JSON files organized by channel
-│   │           ├── AlexHormozi/          # 30 transcripts
+│   │       ├── channels.json             # ⚠️ .gitignored — Channel list with URLs and names
+│   │       └── transcripts/              # ⚠️ .gitignored — Raw transcript JSON files
+│   │           ├── AlexHormozi/          # Alex Hormozi's transcripts
 │   │           ├── DOACBehindTheDiary/   # Steven Bartlett's transcripts
 │   │           ├── brianjenney/          # Brian Jenney's transcripts
 │   │           └── ...                   # 15 more channel folders
@@ -249,35 +249,61 @@ board-of-directors-rag/
 ```bash
 git clone https://github.com/alicagatay/board-of-directors-rag.git
 cd board-of-directors-rag
-yarn install
+nvm use # if using Node Version Manager
+yarn install # or npm install if you prefer using npm
 ```
 
 ### 2. Set Up Environment Variables
 
 Create a `.env` file in the root:
 
-```
-OPENAI_API_KEY=your_openai_key
-HELICONE_API_KEY=your_helicone_key
+```bash
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_FINETUNED_MODEL=your_finetuned_openai_model # optional if you want to use a fine tuned model instead of gpt-4o-mini for mentor selection
+HELICONE_API_KEY=your_helicone_api_key
 QDRANT_URL=your_qdrant_cluster_url
 QDRANT_API_KEY=your_qdrant_api_key
+COHERE_API_KEY=your_cohere_api_key
 ```
 
 - **OpenAI** (https://platform.openai.com/api-keys) — Used for embeddings (`text-embedding-3-small`), generation (`gpt-4o`), routing (`gpt-4o-mini`), and guardrail classification.
 - **Helicone** (https://www.helicone.ai/) — All OpenAI calls are proxied through Helicone for observability, cost tracking, and response caching. Free tier available.
 - **Qdrant** (https://cloud.qdrant.io/) — Managed vector database. Create a cluster with 512 dimensions and cosine similarity. Free tier available.
+- **Cohere** (https://cohere.ai/) — Used for reranking search results. Free tier available.
 
-### 3. Upload Transcripts (if starting fresh)
+### 3. Create the Channels Config
+
+Create `app/scripts/data/channels.json` with the YouTube channels you want to include:
+
+```json
+[
+  {
+    "channelUrl": "https://www.youtube.com/@AlexHormozi",
+    "name": "Alex Hormozi"
+  },
+  {
+    "channelUrl": "https://www.youtube.com/@DanKoeTalks",
+    "name": "Dan Koe"
+  }
+]
+```
+
+This file is `.gitignored` because it defines your personal board of directors. Add as many channels as you want — each will become a mentor in your system.
+
+### 4. Fetch and Upload Transcripts
 
 ```bash
-# Fetch transcripts from YouTube (requires Python + yt-dlp)
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Fetch transcripts from YouTube (30 videos per channel by default)
 python app/scripts/fetch_youtube_transcripts.py
 
 # Chunk, embed, and upload to Qdrant (~5 min, ~15K chunks)
 yarn tsx app/scripts/upload-transcripts.ts
 ```
 
-### 4. Run the Dev Server
+### 5. Run the Dev Server
 
 ```bash
 yarn dev
