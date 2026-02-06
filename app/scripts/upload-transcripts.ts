@@ -78,7 +78,7 @@ function readAllTranscripts(): YouTubeTranscript[] {
         // The JSON has human-readable names like "Alex Hormozi" but we filter by "AlexHormozi"
         transcript.channelName = channel;
         transcripts.push(transcript);
-      } catch (e) {
+      } catch {
         console.warn(`  ⚠️  Failed to parse: ${file}`);
       }
     }
@@ -138,7 +138,8 @@ async function main() {
       const chunks = chunkText(transcript.text, 1000, 200, transcript.videoUrl);
 
       // Extract metadata (everything except the full text)
-      const { text: _, ...transcriptMeta } = transcript;
+      const { text, ...transcriptMeta } = transcript;
+      void text;
 
       transcriptChunks.push({
         chunks,
