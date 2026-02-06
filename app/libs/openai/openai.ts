@@ -28,12 +28,13 @@
  * Learn more about Helicone: https://docs.helicone.ai/
  */
 
+import dotenv from "dotenv";
+import OpenAI from "openai";
+
 // Load environment variables when running scripts (Next.js loads them automatically)
 if (typeof window === "undefined" && !process.env.NEXT_RUNTIME) {
-  require("dotenv").config();
+  dotenv.config();
 }
-
-import OpenAI from "openai";
 
 export const openaiClient = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY as string,
