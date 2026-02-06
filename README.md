@@ -4,7 +4,7 @@ A production Next.js + TypeScript application that lets you chat with your perso
 
 This is a multi-agent RAG (Retrieval Augmented Generation) system. Instead of a single chatbot with generic knowledge, each mentor is a specialized agent grounded in their real content. The system intelligently routes your question to the right mentor, searches their transcript library via vector embeddings, and generates responses that sound like they're actually coming from that person.
 
-<!-- Screenshot: The main chat UI showing a conversation with a mentor. Capture a full browser window with a user question and a streamed mentor response visible, including the mentor's name displayed above their message. -->
+<!-- TODO Screenshot: The main chat UI showing a conversation with a mentor. Capture a full browser window with a user question and a streamed mentor response visible, including the mentor's name displayed above their message. -->
 
 ---
 
@@ -311,7 +311,7 @@ yarn dev
 
 Open `http://localhost:3000` and start chatting with your Board of Directors.
 
-<!-- Screenshot: The landing page of the app when first opened, before any messages are sent. Show the empty chat UI with the input field visible. -->
+<!-- TODO Screenshot: The landing page of the app when first opened, before any messages are sent. Show the empty chat UI with the input field visible. -->
 
 ---
 
@@ -331,7 +331,7 @@ Open `http://localhost:3000` and start chatting with your Board of Directors.
 
 ## Example Interactions
 
-<!-- Screenshot: A conversation where a user asks Alex Hormozi about pricing strategy. Show the streamed response with the mentor name "Alex Hormozi" displayed above it. -->
+<!-- TODO Screenshot: A conversation where a user asks Alex Hormozi about pricing strategy. Show the streamed response with the mentor name "Alex Hormozi" displayed above it. -->
 
 **Business scaling** → Ask Alex Hormozi: _"How should I structure my offer to maximize conversions?"_
 
@@ -343,7 +343,7 @@ Open `http://localhost:3000` and start chatting with your Board of Directors.
 
 **Startup investing** → Ask Will Phillips: _"What do you look for when angel investing in early-stage startups?"_
 
-<!-- Screen recording: A full interaction showing the user typing a question, the brief pause while the mentor is selected, then the response streaming in token by token. About 10-15 seconds of footage. -->
+<!-- TODO Screen recording: A full interaction showing the user typing a question, the brief pause while the mentor is selected, then the response streaming in token by token. About 10-15 seconds of footage. -->
 
 ---
 
