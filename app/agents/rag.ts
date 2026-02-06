@@ -125,7 +125,7 @@ export async function ragAgent(request: AgentRequest): Promise<AgentResponse> {
 
   // Build context with video titles (all from same mentor now)
   const context = rerankedDocuments.results
-    .map((result, i) => {
+    .map((result) => {
       const originalIdx = result.index;
       const transcript = relevantTranscripts[originalIdx];
       const title = transcript.payload?.title || "Untitled";
