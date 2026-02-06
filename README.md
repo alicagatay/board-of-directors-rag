@@ -264,12 +264,16 @@ HELICONE_API_KEY=your_helicone_api_key
 QDRANT_URL=your_qdrant_cluster_url
 QDRANT_API_KEY=your_qdrant_api_key
 COHERE_API_KEY=your_cohere_api_key
+
+# Optional (recommended for deployments): shared password protection for the UI and API routes
+APP_PASSWORD=your_shared_password
 ```
 
 - **OpenAI** (https://platform.openai.com/api-keys) — Used for embeddings (`text-embedding-3-small`), generation (`gpt-4o`), routing (`gpt-4o-mini`), and guardrail classification.
 - **Helicone** (https://www.helicone.ai/) — All OpenAI calls are proxied through Helicone for observability, cost tracking, and response caching. Free tier available.
 - **Qdrant** (https://cloud.qdrant.io/) — Managed vector database. Create a cluster with 512 dimensions and cosine similarity. Free tier available.
 - **Cohere** (https://cohere.ai/) — Used for reranking search results. Free tier available.
+- **APP_PASSWORD** — Optional shared-password gate (HTTP Basic Auth) to prevent public abuse of `/api/*` routes.
 
 ### 3. Create the Channels Config
 
