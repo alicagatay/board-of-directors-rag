@@ -1,260 +1,352 @@
-# AI-Powered Content Generation and RAG
+# Board of Directors RAG
 
-A full-stack TypeScript application demonstrating modern AI techniques including RAG (Retrieval Augmented Generation), fine-tuning, agents, and LLM observability with automated web scraping capabilities.
+A production Next.js + TypeScript application that lets you chat with your personal **Board of Directors** — 18 YouTube mentors covering business, fitness, tech, content creation, and more. Ask any mentor a question, and the system retrieves relevant knowledge from their actual YouTube transcripts, reranks it for quality, and streams a response in their voice and style.
 
-## Prerequisites
+This is a multi-agent RAG (Retrieval Augmented Generation) system. Instead of a single chatbot with generic knowledge, each mentor is a specialized agent grounded in their real content. The system intelligently routes your question to the right mentor, searches their transcript library via vector embeddings, and generates responses that sound like they're actually coming from that person.
 
-Before getting started, you'll need to set up the following services:
+<!-- Screenshot: The main chat UI showing a conversation with a mentor. Capture a full browser window with a user question and a streamed mentor response visible, including the mentor's name displayed above their message. -->
 
-### Required API Keys
+---
 
-1. **OpenAI API Key** (https://platform.openai.com/api-keys)
+## How It Works
 
-   - You'll need at least $5 in credits on your OpenAI account
-   - Used for embeddings, chat completions, and fine-tuning
-
-2. **Pinecone API Key** (https://www.pinecone.io/)
-
-   - Free tier available
-   - Used for vector database storage and similarity search
-
-3. **Helicone API Key** (https://www.helicone.ai/)
-   - Free tier available
-   - Used for LLM observability and monitoring
-
-Create a `.env` file in the root directory with these keys:
+The system follows a **two-stage request flow** — first it figures out _who_ should answer, then it _executes_ the answer with that mentor's knowledge.
 
 ```
-OPENAI_API_KEY=your_openai_key_here
-PINECONE_API_KEY=your_pinecone_key_here
-HELICONE_API_KEY=your_helicone_key_here
-PINECONE_INDEX=your_index_name
-OPENAI_FINETUNED_MODEL=your_finetuned_model_id (optional)
+User Question
+    │
+    ▼
+┌─────────────────────────┐
+│  POST /api/select-agent │  Stage 1: Mentor Selection
+│  (gpt-4o-mini)          │  - Reads last 5 messages for context
+│  - Picks the best       │  - Matches query topic to mentor expertise
+│    mentor for the query │  - Refines/cleans up the user's query
+│  - Returns: mentorId,   │  - Returns structured JSON via Zod schema
+│    refined query,       │
+│    confidence score     │
+└─────────────────────────┘
+    │
+    ▼
+┌─────────────────────────┐
+│  POST /api/chat         │  Stage 2: RAG Pipeline
+│  (gpt-4o)               │
+│  1. Guardrail Layer 1   │  LLM classification — reject off-topic queries cheaply
+│  2. Embed the query     │  text-embedding-3-small (512 dimensions)
+│  3. Vector search       │  Qdrant filtered by mentor's channelName
+│  4. Guardrail Layer 2   │  Similarity threshold (0.3) — reject weak matches
+│  5. Rerank results      │  Cohere rerank-english-v3.0 (top 10)
+│  6. Stream response     │  GPT-4o with mentor personality + transcript context
+└─────────────────────────┘
+    │
+    ▼
+Streamed Response (in the mentor's voice)
 ```
 
-### Recommended Learning Resources
+### Why Two Stages?
 
-Before diving into the code, we highly recommend watching 3Blue1Brown's series on neural networks and embeddings to build intuition for how these systems work:
+Separating mentor selection from response generation gives us several advantages:
 
-- [Neural Networks Series](https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi) - Visual introduction to neural networks
-- [But what is a GPT?](https://www.youtube.com/watch?v=wjZofJX0v4M) - Understanding transformer architecture
-- [Visualizing Attention](https://www.youtube.com/watch?v=eMlx5fFNoYc) - How attention mechanisms work
+1. **Cheap routing**: The selector uses `gpt-4o-mini` (~$0.0001 per call) to quickly decide who should answer, while the actual generation uses the more capable `gpt-4o`.
+2. **Query refinement**: The selector cleans up typos, removes filler words, and restructures the query for better vector search results.
+3. **Confidence scoring**: The selector returns a 1-10 confidence score, which can be used for logging, debugging, or fallback logic.
 
-## Features
+---
 
-- **Multi-Agent System**: 2 specialized agents for different content types:
+## The Mentors
 
-  - LinkedIn Agent: Uses a fine-tuned GPT-4 model for professional content to post on LinkedIn
-  - RAG Agent: Leverages Pinecone vector database for RAG-based content analysis
+The Board of Directors consists of **18 mentors** across different domains. Each mentor has a configured personality, expertise list, and a library of YouTube transcript chunks stored in Qdrant.
 
-- **Web Scraping**:
+| Mentor            | Channel            | Domain                                                     |
+| ----------------- | ------------------ | ---------------------------------------------------------- |
+| Alex Hormozi      | AlexHormozi        | Business scaling, offers, pricing, sales                   |
+| Steven Bartlett   | DOACBehindTheDiary | Entrepreneurship, investing, podcasting, leadership        |
+| Damii             | DamiiBTS           | Mental toughness, gym mindset, brand building              |
+| Dan Koe           | DanKoeTalks        | One-person business, writing, digital products             |
+| George Heaton     | George.Heaton      | Streetwear fashion, e-commerce, brand building             |
+| Hercules Nicolaou | HerculesNicolaou   | Ultra-distance running, marathon training, discipline      |
+| Iman Gadzhi       | ImanGadzhi         | Agency business, digital marketing, wealth building        |
+| Jake Dearden      | JakeDearden        | Hyrox, hybrid athletics, endurance sports                  |
+| Luke Made It      | LukeMadeIt         | Developer hardware, programming productivity, tech reviews |
+| Ross Mackay       | RossMackay1        | Running, fitness startups, work-life balance               |
+| Brian Jenney      | brianjenney        | Learning to code, JavaScript, React, career transitions    |
+| Daniel Dalen      | danieldalen        | E-commerce, Asia business, bootstrapping, AI tools         |
+| Dan Martell       | danmartell         | SaaS, productivity, buying back time, angel investing      |
+| Dom Iacovone      | diacovone          | Content strategy, personal branding, marketing             |
+| Nick Bare         | nickbarefitness    | Hybrid athlete training, military mindset, supplements     |
+| Open Residency    | openresidency      | Psychology, power dynamics, strategy interviews            |
+| Will Phillips     | willphillipsclips  | Silicon Valley, angel investing, startup documentation     |
+| Marko             | withmarko          | Indie hacking, SaaS development, building in public        |
 
-  - Extraction of articles from multiple sources
-  - Bias detection and content structuring
-  - Direct vectorization and storage in Pinecone database
+Mentor configurations (name, expertise, personality prompts) are defined in `app/mentors/config.ts`. The selector uses these descriptions to route queries, and the RAG agent uses the personality field to shape the tone of the response.
 
-- **Training Pipeline**:
+---
 
-  - Scripts for fine-tuning data preparation
-  - Cost estimation tools
-  - Training job management
+## The RAG Pipeline (In Detail)
 
-- **Observability**:
-  - Integration with Helicone for LLM monitoring
-  - Performance tracking
-  - Usage analytics
+When a user asks a question, here's exactly what happens inside the RAG agent (`app/agents/rag.ts`):
+
+### 1. Guardrail Layer 1 — LLM Classification
+
+Before doing any expensive work, a cheap `gpt-4o-mini` call checks if the query is even relevant to what our mentors know about. This catches obviously off-topic queries like "What's the weather?" or "Tell me a joke" and returns a friendly rejection message.
+
+**Why?** A full RAG pipeline (embedding + vector search + reranking + generation) costs ~$0.01-0.03 per query. The guardrail classifier costs ~$0.0001. Rejecting junk early saves 99% of the cost on those queries and prevents the LLM from hallucinating answers using unrelated context.
+
+The list of accepted topics is defined in `app/agents/guardrails.ts` and covers business, fitness, content creation, software development, mindset, investing, and psychology — matching the collective expertise of all 18 mentors.
+
+### 2. Embedding Generation
+
+The query is converted into a 512-dimensional vector using OpenAI's `text-embedding-3-small` model. This is the same model used when the transcripts were originally uploaded, so the vectors live in the same embedding space and can be compared.
+
+### 3. Vector Search (Qdrant)
+
+The embedding is searched against the `transcripts` collection in Qdrant with a **filter** on `channelName` matching the selected mentor. This means we only search through that specific mentor's content — not the entire corpus. We over-fetch 20 results to give the reranker a good pool to work with.
+
+### 4. Guardrail Layer 2 — Similarity Threshold
+
+Even if the LLM classifier approved the query, the vector search results might all have low similarity scores. This happens when the query uses unusual phrasing or asks about something the mentor never discussed. Any results below the threshold (0.3) are filtered out. If nothing remains, the user gets a message explaining the mentor doesn't have content on that specific topic.
+
+### 5. Cohere Reranking
+
+Vector search finds semantically similar content, but "similar" doesn't always mean "relevant to the question." Cohere's `rerank-english-v3.0` model re-scores the results by actually reading the query and each document together, producing much better relevance ordering. We take the top 10 results after reranking.
+
+**Why rerank?** A query like "How do I price my product?" might return chunks about pricing, about products, and about strategies — all semantically close. The reranker understands the _intent_ and pushes the chunks that specifically discuss pricing strategy to the top.
+
+### 6. Streaming Response
+
+The reranked transcript excerpts are injected into a system prompt along with the mentor's personality description and expertise list. GPT-4o generates a response _in the mentor's voice_, drawing from their actual content. The response is streamed token-by-token to the frontend using Vercel AI SDK's `streamText`.
+
+---
+
+## Data Pipeline
+
+### Where the Data Comes From
+
+YouTube transcripts are fetched using `app/scripts/fetch_youtube_transcripts.py` and stored as JSON files under `app/scripts/data/transcripts/{channelName}/`. Each file contains the full transcript text plus metadata (video ID, title, view count, duration, publish date).
+
+### How Transcripts Are Chunked
+
+YouTube auto-generated transcripts typically have **no punctuation**. A 90,000-character transcript might contain only 6 periods. This breaks naive sentence-based chunking because the entire transcript looks like one massive "sentence."
+
+The chunking implementation (`app/libs/chunking.ts`) handles this with a two-layer approach:
+
+1. **Sentence splitting**: Split on `.!?` delimiters to preserve natural language boundaries where they exist.
+2. **Word-boundary fallback**: When a "sentence" exceeds the chunk size (because there's no punctuation), `splitAtWordBoundary()` splits at the last space before the limit — never mid-word.
+
+**Configuration**: 1000-character chunks with 200-character overlap. The overlap ensures that if a concept spans two chunks, both chunks have enough context for the embeddings to capture the meaning.
+
+For a detailed explanation of the chunking strategy, see `app/files/chunking-strategy.md`.
+
+### How Transcripts Are Uploaded
+
+The upload script (`app/scripts/upload-transcripts.ts`) processes all transcripts:
+
+1. Read JSON transcript files from `app/scripts/data/transcripts/{channelName}/`
+2. Chunk each transcript (1000 chars, 200 overlap)
+3. Generate embeddings in batches of 30 via OpenAI `text-embedding-3-small` (512 dimensions)
+4. Upsert to the Qdrant `transcripts` collection with full metadata (video URL, channel name, title, view count, etc.)
+
+The `channelName` field is stored as a keyword-indexed payload in Qdrant, enabling fast filtered searches per mentor.
+
+**Stats**: ~15,600 chunks from ~484 transcripts across 18 channels.
+
+---
+
+## Guardrails
+
+The system uses a **two-layer guardrail strategy** to prevent wasted computation and hallucinated responses. Both layers are implemented in `app/agents/guardrails.ts`.
+
+| Layer                | When It Runs            | What It Catches                                    | Cost                      |
+| -------------------- | ----------------------- | -------------------------------------------------- | ------------------------- |
+| LLM Classification   | Before embedding/search | Off-topic queries ("recipe for pasta")             | ~$0.0001                  |
+| Similarity Threshold | After vector search     | Queries with no good matches in the knowledge base | Free (post-search filter) |
+
+When a query is rejected, the system returns a **static text stream** (no LLM call) with a helpful message listing the types of topics the mentors can help with. This keeps the API contract consistent — the frontend always receives a stream, whether it's from GPT-4o or a pre-written rejection message.
+
+---
 
 ## Tech Stack
 
-- **Frontend**: Next.js, TypeScript, TailwindCSS
-- **Backend**: Next.js API Routes
-- **AI/ML**: OpenAI API, Pinecone Vector Database
-- **Web Scraping**: Puppeteer
-- **Monitoring**: Helicone
-- **Package Manager**: Yarn
+| Layer         | Technology                                       | Purpose                                  |
+| ------------- | ------------------------------------------------ | ---------------------------------------- |
+| Frontend      | Next.js 15 (App Router), TypeScript, TailwindCSS | Chat UI with real-time streaming         |
+| Backend       | Next.js API Routes                               | Two endpoints: mentor selection + chat   |
+| Embeddings    | OpenAI `text-embedding-3-small` (512d)           | Convert text to vectors for search       |
+| Generation    | OpenAI `gpt-4o`                                  | Mentor-style response generation         |
+| Routing       | OpenAI `gpt-4o-mini` + Zod structured outputs    | Cheap, fast mentor selection             |
+| Vector DB     | Qdrant Cloud                                     | Store and search transcript embeddings   |
+| Reranking     | Cohere `rerank-english-v3.0`                     | Improve retrieval quality after search   |
+| Observability | Helicone                                         | LLM call logging, cost tracking, caching |
+| Testing       | Jest + ts-jest                                   | Guardrails, chunking, agent routing      |
 
-## Learning Objectives
-
-This repository serves as a practical guide for you to learn:
-
-1. **RAG Implementation**
-
-   - Vector database integration with Pinecone
-   - Semantic search capabilities
-   - Automated web scraping
-   - Context-aware responses using retrieved content
-
-2. **Fine-tuning**
-
-   - Data preparation
-   - Model training
-   - Cost optimization
-
-3. **Agent Architecture**
-
-   - Specialized agent design
-   - Response handling
-   - Agent response format
-
-4. **Web Scraping & Data Pipeline**
-
-   - Intelligent content extraction
-   - Automated bias detection
-   - Content vectorization and storage
-
-5. **LLM Observability**
-
-   - Performance monitoring
-   - Usage tracking
-   - Cost management
-
-6. **News Article Scraping & Vectorization**
-
-   - The application uses Puppeteer to automatically scrape news articles from configured sources
-   - Articles are processed to extract content
-   - Scraped content is automatically vectorized using OpenAI embeddings and stored in Pinecone
-
-7. **Manual Article Upload**
-   - Navigate to `/scrape-content` to manually scrape urls
-   - Content is automatically vectorized and added to the Pinecone database
+---
 
 ## Project Structure
 
 ```
-mini-rag/
+board-of-directors-rag/
+│
 ├── app/
-│   ├── api/              # API routes
-│   ├── libs/             # Shared utilities
-│   ├── scripts/          # Training and data scripts
-│   └── page.tsx          # Main application
+│   ├── page.tsx                    # Main chat UI — message input, streaming display, mentor names
+│   ├── layout.tsx                  # Root layout with global styles
+│   ├── globals.css                 # TailwindCSS global styles
+│   │
+│   ├── api/                        # Next.js API routes (the backend)
+│   │   ├── select-agent/
+│   │   │   └── route.ts            # POST — LLM router that picks the best mentor + refines query
+│   │   ├── chat/
+│   │   │   └── route.ts            # POST — Executes RAG pipeline and streams the response
+│   │   └── rag-test/
+│   │       └── route.ts            # POST — Debug endpoint for testing RAG without the full flow
+│   │
+│   ├── agents/                     # Agent logic (the brains)
+│   │   ├── rag.ts                  # RAG agent — embedding, search, rerank, generate
+│   │   ├── guardrails.ts           # Two-layer guardrail system + topic definitions
+│   │   ├── registry.ts             # Agent registry — maps agent types to executor functions
+│   │   ├── types.ts                # Zod schemas for AgentType, Message, AgentRequest
+│   │   └── __tests__/
+│   │       ├── guardrails.test.ts  # 24 tests: topic relevance, thresholds, rejection messages
+│   │       └── selector.test.ts    # Tests for mentor routing accuracy
+│   │
+│   ├── mentors/
+│   │   └── config.ts               # All 18 mentor profiles: name, expertise[], personality
+│   │
+│   ├── libs/                       # Third-party integrations and shared utilities
+│   │   ├── openai/
+│   │   │   └── openai.ts           # Shared OpenAI client configured with Helicone proxy
+│   │   ├── qdrant.ts               # Qdrant client + collection helpers
+│   │   ├── cohere.ts               # Cohere reranking client
+│   │   ├── chunking.ts             # Text chunking with sentence-splitting + word-boundary fallback
+│   │   └── chunking.test.ts        # 19 tests: chunk sizes, overlap, edge cases, no-punctuation
+│   │
+│   ├── scripts/                    # Data ingestion and processing scripts
+│   │   ├── fetch_youtube_transcripts.py  # Python script to fetch transcripts from YouTube
+│   │   ├── upload-transcripts.ts         # Chunk + embed + upsert transcripts to Qdrant
+│   │   └── data/
+│   │       ├── channels.json             # Channel list with IDs and names
+│   │       └── transcripts/              # Raw transcript JSON files organized by channel
+│   │           ├── AlexHormozi/          # 30 transcripts
+│   │           ├── DOACBehindTheDiary/   # Steven Bartlett's transcripts
+│   │           ├── brianjenney/          # Brian Jenney's transcripts
+│   │           └── ...                   # 15 more channel folders
+│   │
+│   └── files/
+│       └── chunking-strategy.md    # Detailed documentation of the chunking approach
+│
+├── .env                            # API keys (not committed)
+├── package.json
+├── tsconfig.json
+├── tailwind.config.ts
+├── jest.config.js
+└── AGENTS.md                       # AI assistant instructions for working with this codebase
 ```
 
-## 🚨 Your Mission: Fix This Broken App
+---
 
-**This app doesn't work yet.** Your job is to build it from scratch by completing exercises and TODOs. When you're done, you'll have a fully functional AI-powered chat app with:
+## Getting Started
 
-1. **RAG Agent** - Chat with your knowledge base (technical docs, articles, etc.)
-2. **LinkedIn Agent** - Fine-tuned on Brian's LinkedIn posts to generate professional content
-
-### What You Need To Do:
-
-**Step 1: Understand Vector Math (30 mins)**
-
-Before writing any code, build intuition for how embeddings work:
+### 1. Clone and Install
 
 ```bash
-# Run the word arithmetic exercise
-yarn exercise:word-math
-```
-
-This demonstrates "word math" like `king - man + woman ≈ queen`. Understanding this is crucial for understanding RAG.
-
-- Learn: [3Blue1Brown Neural Networks](https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi), [Vector Embeddings](https://platform.openai.com/docs/guides/embeddings)
-
-**Step 2: Set Up Your Vector Database**
-
-Create a Pinecone index and configure your environment:
-
-1. Sign up at [Pinecone](https://www.pinecone.io/) (free tier)
-2. Create an index:
-   - Name: `rag-tutorial`
-   - Dimensions: `512`
-   - Metric: `cosine`
-3. Add to `.env`:
-   ```bash
-   OPENAI_API_KEY=sk-proj-...
-   PINECONE_API_KEY=...
-   PINECONE_INDEX=rag-tutorial
-   ```
-
-- Learn: [Pinecone Quickstart](https://docs.pinecone.io/guides/get-started/quickstart)
-
-**Step 3: Upload Knowledge Base to Pinecone**
-
-Scrape documentation and upload embeddings:
-
-```bash
-# Edit app/scripts/scrapeAndVectorizeContent.ts to add your URLs
-# Then run:
-yarn tsx app/scripts/scrapeAndVectorizeContent.ts
-```
-
-This will scrape URLs, chunk the content, generate embeddings, and upload to Pinecone.
-
-- Learn: [Chunking Strategies](https://www.pinecone.io/learn/chunking-strategies/), [Text Embeddings](https://platform.openai.com/docs/guides/embeddings/use-cases)
-
-**Step 4: Train Your LinkedIn Agent**
-
-Fine-tune a model on Brian's LinkedIn posts:
-
-```bash
-# (Optional) Estimate cost before training
-yarn tsx app/scripts/estimate-training-cost.ts
-
-# Upload to OpenAI and start fine-tuning job
-yarn tsx app/scripts/upload-training-data.ts
-```
-
-Once training completes (~10-20 mins), add the model ID to `.env`:
-
-```bash
-OPENAI_FINETUNED_MODEL=ft:gpt-4o-mini-2024-07-18:personal::YOUR_ID
-```
-
-- Learn: [OpenAI Fine-Tuning Guide](https://platform.openai.com/docs/guides/fine-tuning), [When to Fine-Tune vs RAG](https://platform.openai.com/docs/guides/fine-tuning/when-to-use-fine-tuning)
-
-**Step 5: Fix All The TODOs**
-
-Search the codebase for `TODO` comments - you'll find them in:
-
-- `app/api/upload-document/route.ts` - Implement document upload pipeline
-- `app/libs/openai/agents/linkedin-agent.ts` - Complete LinkedIn agent
-- `app/libs/openai/agents/rag-agent.ts` - Build RAG retrieval and generation
-- `app/libs/openai/agents/selector-agent.ts` - Create agent router
-
-Key concepts you'll implement:
-
-- **RAG**: [What is RAG?](https://www.pinecone.io/learn/retrieval-augmented-generation/), [Vector Similarity Search](https://platform.openai.com/docs/guides/embeddings/use-cases)
-- **Agents**: [OpenAI Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs), [Multi-Agent Systems](https://www.anthropic.com/research/building-effective-agents)
-- **Streaming**: [Vercel AI SDK](https://sdk.vercel.ai/docs), [Server-Sent Events](https://platform.openai.com/docs/api-reference/streaming)
-
-**Step 6: Run The App**
-
-```bash
+git clone https://github.com/alicagatay/board-of-directors-rag.git
+cd board-of-directors-rag
 yarn install
+```
+
+### 2. Set Up Environment Variables
+
+Create a `.env` file in the root:
+
+```
+OPENAI_API_KEY=your_openai_key
+HELICONE_API_KEY=your_helicone_key
+QDRANT_URL=your_qdrant_cluster_url
+QDRANT_API_KEY=your_qdrant_api_key
+```
+
+- **OpenAI** (https://platform.openai.com/api-keys) — Used for embeddings (`text-embedding-3-small`), generation (`gpt-4o`), routing (`gpt-4o-mini`), and guardrail classification.
+- **Helicone** (https://www.helicone.ai/) — All OpenAI calls are proxied through Helicone for observability, cost tracking, and response caching. Free tier available.
+- **Qdrant** (https://cloud.qdrant.io/) — Managed vector database. Create a cluster with 512 dimensions and cosine similarity. Free tier available.
+
+### 3. Upload Transcripts (if starting fresh)
+
+```bash
+# Fetch transcripts from YouTube (requires Python + yt-dlp)
+python app/scripts/fetch_youtube_transcripts.py
+
+# Chunk, embed, and upload to Qdrant (~5 min, ~15K chunks)
+yarn tsx app/scripts/upload-transcripts.ts
+```
+
+### 4. Run the Dev Server
+
+```bash
 yarn dev
 ```
 
-Visit `http://localhost:3000` and test:
+Open `http://localhost:3000` and start chatting with your Board of Directors.
 
-- Upload new documents (URLs or raw text)
-- Ask technical questions (should use RAG agent)
-- Request LinkedIn posts (should use fine-tuned agent)
+<!-- Screenshot: The landing page of the app when first opened, before any messages are sent. Show the empty chat UI with the input field visible. -->
 
-**Step 7: Run Tests**
+---
+
+## Commands
+
+| Command              | Purpose                                |
+| -------------------- | -------------------------------------- |
+| `yarn dev`           | Start dev server (Next.js + Turbopack) |
+| `yarn build`         | Production build                       |
+| `yarn start`         | Start production server                |
+| `yarn test`          | Run all Jest tests                     |
+| `yarn test:selector` | Test mentor routing logic              |
+| `yarn test:chunking` | Test text chunking                     |
+| `yarn lint`          | Run ESLint                             |
+
+---
+
+## Example Interactions
+
+<!-- Screenshot: A conversation where a user asks Alex Hormozi about pricing strategy. Show the streamed response with the mentor name "Alex Hormozi" displayed above it. -->
+
+**Business scaling** → Ask Alex Hormozi: _"How should I structure my offer to maximize conversions?"_
+
+**Learning to code** → Ask Brian Jenney: _"What's the best way to learn React as a beginner?"_
+
+**Hybrid fitness** → Ask Jake Dearden: _"How do I train for my first Hyrox race?"_
+
+**SaaS growth** → Ask Dan Martell: _"How do I buy back my time as a founder?"_
+
+**Startup investing** → Ask Will Phillips: _"What do you look for when angel investing in early-stage startups?"_
+
+<!-- Screen recording: A full interaction showing the user typing a question, the brief pause while the mentor is selected, then the response streaming in token by token. About 10-15 seconds of footage. -->
+
+---
+
+## Testing
+
+Tests call API route handlers and library functions directly — no server required.
 
 ```bash
-# Test your agent selector
-yarn test:selector
-
-# Test all implementations
+# Run all tests
 yarn test
+
+# Guardrails: topic relevance, thresholds, rejection messages (24 tests)
+yarn test -- app/agents/__tests__/guardrails.test.ts
+
+# Chunking: chunk sizes, overlap, word-boundary fallback, edge cases (19 tests)
+yarn test -- app/libs/chunking.test.ts
+
+# Mentor routing: verifies correct mentor selection for different query types
+yarn test:selector
 ```
 
-### Hints:
-
-- The `working_version` branch has the complete solution if you get stuck
-- Use `console.log()` liberally to understand data flow
-- Check Pinecone dashboard to verify vectors are uploaded
-- Use Helicone dashboard to debug LLM calls and see cost
-- Read the inline comments in TODO sections - they guide you step-by-step
-
-**Good luck! Figure it out. 🚀**
+---
 
 ## Resources
 
-- [OpenAI Documentation](https://platform.openai.com/docs)
-- [Pinecone Documentation](https://docs.pinecone.io)
-- [Helicone Documentation](https://docs.helicone.ai)
-- [Vercel AI SDK](https://sdk.vercel.ai/docs)
-- [Next.js Documentation](https://nextjs.org/docs)
+- [OpenAI Embeddings Guide](https://platform.openai.com/docs/guides/embeddings) — How text embeddings work
+- [OpenAI Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs) — Zod-based schema enforcement for LLM responses
+- [Qdrant Documentation](https://qdrant.tech/documentation/) — Vector search and filtering
+- [Cohere Rerank](https://docs.cohere.com/docs/rerank) — Improving retrieval quality
+- [Vercel AI SDK](https://sdk.vercel.ai/docs) — Streaming LLM responses in Next.js
+- [Helicone Documentation](https://docs.helicone.ai) — LLM observability and monitoring
+- [Next.js App Router](https://nextjs.org/docs) — Server-side API routes and React framework
