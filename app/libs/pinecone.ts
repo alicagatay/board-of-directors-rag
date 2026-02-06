@@ -16,16 +16,15 @@
  */
 
 import {
-	Pinecone,
-	RecordMetadata,
-	ScoredPineconeRecord,
-} from '@pinecone-database/pinecone';
-import { openaiClient } from '../libs/openai/openai';
+  Pinecone,
+  RecordMetadata,
+  ScoredPineconeRecord,
+} from "@pinecone-database/pinecone";
 
 // Initialize Pinecone client with your API key
 // Get your free API key at: https://app.pinecone.io/
 export const pineconeClient = new Pinecone({
-	apiKey: process.env.PINECONE_API_KEY as string,
+  apiKey: process.env.PINECONE_API_KEY as string,
 });
 
 /**
@@ -36,18 +35,20 @@ export const pineconeClient = new Pinecone({
  * @returns Array of matching documents with similarity scores
  */
 export const searchDocuments = async (
-	query: string,
-	topK: number = 3
+  query: string,
+  topK: number = 3,
 ): Promise<ScoredPineconeRecord<RecordMetadata>[]> => {
-	// TODO: Step 1 - Connect to the vector database index
+  void query;
+  void topK;
+  // TODO: Step 1 - Connect to the vector database index
 
-	// TODO: Step 2 - Generate query embedding using OpenAI
+  // TODO: Step 2 - Generate query embedding using OpenAI
 
-	// TODO: Step 3 - Extract the embedding array from the response
+  // TODO: Step 3 - Extract the embedding array from the response
 
-	// TODO: Step 4 - Query vector database for similar vectors
+  // TODO: Step 4 - Query vector database for similar vectors
 
-	// TODO: Step 5 - Return the matches
+  // TODO: Step 5 - Return the matches
 
-	throw new Error('searchDocuments not implemented yet!');
+  throw new Error("searchDocuments not implemented yet!");
 };
