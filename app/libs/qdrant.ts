@@ -24,12 +24,13 @@
  * Learn more: https://qdrant.tech/documentation/
  */
 
+import dotenv from "dotenv";
+import { QdrantClient } from "@qdrant/js-client-rest";
+
 // Load environment variables when running scripts (Next.js loads them automatically)
 if (typeof window === "undefined" && !process.env.NEXT_RUNTIME) {
-  require("dotenv").config();
+  dotenv.config();
 }
-
-import { QdrantClient } from "@qdrant/js-client-rest";
 
 /**
  * Initialize Qdrant client with cloud credentials.
