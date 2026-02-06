@@ -1,21 +1,23 @@
-import type { Metadata } from 'next';
-import './globals.css';
+import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-	title: 'Mini RAG Chat',
-	description: 'RAG chatbot with document upload',
+  title: "Mini RAG Chat",
+  description: "RAG chatbot with document upload",
 };
 
 export default function RootLayout({
-	children,
+  children,
 }: Readonly<{
-	children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-	return (
-		<html lang='en'>
-			<body>
-				<main className='pt-16'>{children}</main>
-			</body>
-		</html>
-	);
+  return (
+    <html lang="en">
+      <body>
+        <main className="pt-16">{children}</main>
+        <Analytics />
+      </body>
+    </html>
+  );
 }
