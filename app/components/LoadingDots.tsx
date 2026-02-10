@@ -37,14 +37,14 @@ export default function LoadingDots({
 
   return (
     <div className="flex items-center space-x-2">
-      {[1, 2, 3, 4, 5].map((dotNumber) => (
-        <div
-          key={dotNumber}
-          className={`w-3 h-3 rounded-full bg-gray-500 transition-opacity duration-300 ${
-            dotNumber <= visibleDots ? "opacity-100" : "opacity-0"
-          }`}
-        />
-      ))}
+      {[1, 2, 3, 4, 5]
+        .filter((dotNumber) => dotNumber <= visibleDots)
+        .map((dotNumber) => (
+          <div
+            key={dotNumber}
+            className="w-3 h-3 rounded-full bg-gray-500"
+          />
+        ))}
     </div>
   );
 }
