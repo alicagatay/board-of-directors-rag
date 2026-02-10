@@ -151,7 +151,7 @@ export default function Home() {
               <div className="whitespace-pre-wrap">{message.content}</div>
             </div>
           ))}
-          {isStreaming && !messages[messages.length - 1]?.content && (
+          {isStreaming && messages[messages.length - 1]?.role === "user" && (
             <div className="p-3 rounded bg-gray-100 mr-8">
               <LoadingDots />
             </div>
