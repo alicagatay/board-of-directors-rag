@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { mentorConfigs, type MentorId } from "./mentors/config";
+import LoadingDots from "./components/LoadingDots";
 
 export default function Home() {
   const [input, setInput] = useState("");
@@ -152,7 +153,7 @@ export default function Home() {
           ))}
           {isStreaming && !messages[messages.length - 1]?.content && (
             <div className="p-3 rounded bg-gray-100 mr-8">
-              <p className="text-gray-500">Thinking...</p>
+              <LoadingDots />
             </div>
           )}
           <div ref={messagesEndRef} />
