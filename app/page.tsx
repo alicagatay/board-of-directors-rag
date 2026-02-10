@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { mentorConfigs, type MentorId } from "./mentors/config";
+import LoadingDots from "./components/LoadingDots";
 
 export default function Home() {
   const [input, setInput] = useState("");
@@ -15,6 +16,7 @@ export default function Home() {
     }>
   >([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [loadingDotsCount, setLoadingDotsCount] = useState(1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom of messages
@@ -150,9 +152,14 @@ export default function Home() {
               <div className="whitespace-pre-wrap">{message.content}</div>
             </div>
           ))}
-          {isStreaming && !messages[messages.length - 1]?.content && (
-            <div className="p-3 rounded bg-gray-100 mr-8">
-              <p className="text-gray-500">Thinking...</p>
+          {isStreaming && messages[messages.length - 1]?.role === "user" && (
+            <div
+              className="p-3 rounded bg-gray-100 mr-8 transition-all duration-300"
+              style={{
+                width: `${40 + loadingDotsCount * 12}px`,
+              }}
+            >
+              <LoadingDots onDotsChange={setLoadingDotsCount} />
             </div>
           )}
           <div ref={messagesEndRef} />
