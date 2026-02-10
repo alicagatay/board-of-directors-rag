@@ -152,18 +152,16 @@ export default function Home() {
               <div className="whitespace-pre-wrap">{message.content}</div>
             </div>
           ))}
-          {isStreaming &&
-            messages[messages.length - 1]?.role === "assistant" &&
-            !messages[messages.length - 1]?.content && (
-              <div
-                className="p-3 rounded bg-gray-100 mr-8 transition-all duration-300"
-                style={{
-                  width: `${40 + loadingDotsCount * 12}px`,
-                }}
-              >
-                <LoadingDots onDotsChange={setLoadingDotsCount} />
-              </div>
-            )}
+          {isStreaming && messages[messages.length - 1]?.role === "user" && (
+            <div
+              className="p-3 rounded bg-gray-100 mr-8 transition-all duration-300"
+              style={{
+                width: `${40 + loadingDotsCount * 12}px`,
+              }}
+            >
+              <LoadingDots onDotsChange={setLoadingDotsCount} />
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
