@@ -4,6 +4,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { messageSchema } from "@/app/agents/types";
 import { mentorIdSchema, getMentorDescriptions } from "@/app/mentors/config";
+import { checkQueryRelevance } from "@/app/agents/guardrails";
 
 const selectAgentSchema = z.object({
   messages: z.array(messageSchema).min(1),
@@ -35,6 +36,30 @@ export async function POST(req: NextRequest) {
 
     // Take last 5 messages for context
     const recentMessages = messages.slice(-5);
+
+    // Get the user's query from the last message
+    const lastMessage = recentMessages[recentMessages.length - 1];
+    const userQuery = lastMessage?.content || "";
+
+    // Check if query is relevant to our topics
+    const relevanceCheck = await checkQueryRelevance(userQuery);
+
+    // If query is irrelevant, randomly select a mentor
+    // This ensures variety in responses when rejecting queries
+    if (!relevanceCheck.isRelevant) {
+      const allMentors = mentorIdSchema.options;
+      const randomMentor = allMentors[Math.floor(Math.random() * allMentors.length)];
+
+      console.log(
+        `Query rejected as irrelevant: "${userQuery}" - Randomly selected mentor: ${randomMentor}`,
+      );
+
+      return NextResponse.json({
+        mentor: randomMentor,
+        query: userQuery,
+        confidence: 1, // Low confidence since query is irrelevant
+      });
+    }
 
     // Build mentor descriptions from config
     const mentorDescriptions = getMentorDescriptions();
