@@ -16,6 +16,7 @@ export default function Home() {
     }>
   >([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [loadingDotsCount, setLoadingDotsCount] = useState(1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom of messages
@@ -152,8 +153,13 @@ export default function Home() {
             </div>
           ))}
           {isStreaming && messages[messages.length - 1]?.role === "user" && (
-            <div className="p-3 rounded bg-gray-100 mr-8">
-              <LoadingDots />
+            <div
+              className="p-3 rounded bg-gray-100 mr-8 transition-all duration-300"
+              style={{
+                width: `${40 + loadingDotsCount * 12}px`,
+              }}
+            >
+              <LoadingDots onDotsChange={setLoadingDotsCount} />
             </div>
           )}
           <div ref={messagesEndRef} />

@@ -6,12 +6,17 @@ import { useState, useEffect } from "react";
  * LoadingDots component displays 5 dots that appear sequentially
  * Each dot becomes visible after 1 second
  */
-export default function LoadingDots() {
+export default function LoadingDots({
+  onDotsChange,
+}: {
+  onDotsChange?: (count: number) => void;
+}) {
   const [visibleDots, setVisibleDots] = useState(1); // Start with first dot visible
 
   useEffect(() => {
     // Reset to 1 when component mounts (first dot visible immediately)
     setVisibleDots(1);
+    onDotsChange?.(1);
 
     // Show remaining dots one by one, each after 1 second
     const intervals: NodeJS.Timeout[] = [];
@@ -19,6 +24,7 @@ export default function LoadingDots() {
     for (let i = 2; i <= 5; i++) {
       const timeout = setTimeout(() => {
         setVisibleDots(i);
+        onDotsChange?.(i);
       }, (i - 1) * 1000); // i=2 at 1000ms, i=3 at 2000ms, etc.
       intervals.push(timeout);
     }
@@ -27,7 +33,7 @@ export default function LoadingDots() {
     return () => {
       intervals.forEach((timeout) => clearTimeout(timeout));
     };
-  }, []);
+  }, [onDotsChange]);
 
   return (
     <div className="flex items-center space-x-2">
