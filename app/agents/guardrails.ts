@@ -213,7 +213,7 @@ export const SIMILARITY_SCORE_THRESHOLD = 0.3;
  * @returns A message explaining what the Board of Directors can help with
  */
 export function buildRejectionMessage(): string {
-  return `Your Board of Directors can help with:
+  return `Sorry, none of us can help you with that query. As your Board of Directors, we can only assist you with the following topics:
 
 **Business & Entrepreneurship**
 • Scaling businesses, offers, pricing, sales
@@ -239,7 +239,7 @@ export function buildRejectionMessage(): string {
 • Angel investing, VC, Silicon Valley
 • Bootstrapping, early-stage growth
 
-Please rephrase your question to focus on one of these areas.`;
+Please rephrase your question to focus on one of these areas so that one of us can answer it.`;
 }
 
 /**
