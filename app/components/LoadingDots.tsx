@@ -19,19 +19,19 @@ export default function LoadingDots({
     onDotsChange?.(1);
 
     // Show remaining dots one by one, each after 1 second
-    const intervals: NodeJS.Timeout[] = [];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
 
     for (let i = 2; i <= 5; i++) {
       const timeout = setTimeout(() => {
         setVisibleDots(i);
         onDotsChange?.(i);
       }, (i - 1) * 1000); // i=2 at 1000ms, i=3 at 2000ms, etc.
-      intervals.push(timeout);
+      timeouts.push(timeout);
     }
 
     // Cleanup timeouts when component unmounts
     return () => {
-      intervals.forEach((timeout) => clearTimeout(timeout));
+      timeouts.forEach((timeout) => clearTimeout(timeout));
     };
   }, [onDotsChange]);
 
